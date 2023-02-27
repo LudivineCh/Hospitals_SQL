@@ -3,6 +3,10 @@ CREATE DATABASE hospitals;
 USE hospitals;
 SHOW TABLES;
 
+SELECT * FROM hospital;
+SELECT * FROM patient;
+SELECT * FROM details_patient_fees;
+
 -- Table hospital
 CREATE TABLE hospital (
 hospital_id INTEGER AUTO_INCREMENT,
@@ -24,7 +28,7 @@ VALUES
 ('Molchanova Hospital', '4/1 Moo 3 Thepkasatri Road Ratsada', '83000', 'Phuket', 'Thailand', 15, '+6676237220'),
 ('Paoli Hospital', ' 604 Chemin de Falconaja', '20600', 'Bastia', 'France', 0,  '+33495591111');
 
-SELECT * FROM hospital;
+
 
 -- Table patient
 CREATE TABLE patient (
@@ -376,10 +380,9 @@ VALUES
 SHOW TABLES;
 
 
--- 1/ Which dotors have the most patient ? Give the TOP 3, the name of their hospital and their specility.
+-- Question 1: Which doctors have the most patients? Give the TOP 3, the name of their hospital and their specialty.
 # Drop PROCEDURE if needed
 DROP PROCEDURE IF EXISTS get_details_of_top3_busiest_doctors;
-
 #Create Stored Procedure  procedure that add the long_term_patients names in a row
 DELIMITER //
 CREATE PROCEDURE get_details_of_top3_busiest_doctors()
@@ -394,7 +397,6 @@ WITH number_patients_per_doctor AS
 	INNER JOIN doctor d ON d.doctor_id = mb.doctor_id
     GROUP BY 2
 	)
-
 SELECT 
 	np.doctor_id AS ID_number,
     CONCAT(d.first_name, ' ', d.last_name) AS doctor_name,
@@ -407,15 +409,31 @@ LEFT JOIN hospital h ON h.hospital_id = d.hospital_id
 ORDER BY 5 DESC
 LIMIT 3
 ;
-
 END//
 DELIMITER ;
 
 call get_details_of_top3_busiest_doctors();
 
 
+-- same but without subquery :
+SELECT 
+	d.doctor_id AS ID_number,
+    CONCAT(d.first_name, ' ', d.last_name) AS doctor_name,
+    d.medical_speciality,
+    hospital_name,
+    COUNT(p.patient_id) AS number_of_patients 
+FROM patient p
+INNER JOIN medical_bill mb ON mb.patient_id = p.patient_id
+INNER JOIN hospital h ON h.hospital_id = p.hospital_id
+INNER JOIN doctor d ON d.doctor_id = mb.doctor_id
+GROUP BY 1
+ORDER BY 5 DESC
+LIMIT 3
+;
 
--- 2/ Which top 5 patients have the most fees (all including) ? display relevant information.
+
+
+-- Question 2: Which top 5 patients have the most fees (all including)? display relevant information.
 
 # Drop PROCEDURE if needed
 DROP PROCEDURE IF EXISTS get_details_of_top5_most_expensive_patients;
@@ -465,7 +483,7 @@ DELIMITER ;
 call get_details_of_top5_most_expensive_patients();
 
 
--- 3/ Group in the same table 3 informations :  
+-- 3/ Group in the same table 3 pieces of information :  
 		-- What are the three special meals that patients buy the most?  
 		-- What are the three most expensive special meals ? 
         -- What are the top 3 most lucrative special meals? 
@@ -592,7 +610,7 @@ SELECT * FROM patient;
 
 
 
--- 5/ TRIGGER: Display a message if a patient age is lower than 18
+-- Question 5: TRIGGER: Display a message if the patient's age is lower than 18 years old.
 DROP TRIGGER IF EXISTS hospitals.minor_patient;
 
 # create the trigger
@@ -620,7 +638,7 @@ SELECT * FROM patient;
 -- 6/ EVENT 
 -- Every month, a show is organized for the long-term patients. The idea is to create an event that publish the list of the long_term patients on a monthly basis.
 
--- STEP A -FUNCTION: create a function that determine if the patient is considered as a long-term patient or not.
+-- STEP A -FUNCTION: Create a function that determines if the patient is considered a long-term patient or not.
 # delete function if needed
 DROP FUNCTION IF EXISTS is_long_term;
 
@@ -648,7 +666,7 @@ SELECT is_long_term('2019-05-01', '2020-05-05') AS patient_status;
 
 
 
--- STEP B : VIEW that lists of long-term patients
+-- STEP B : View the list of long-term patients.
 # Drop VIEW before to use it
 DROP VIEW IF EXISTS long_term_patient_status;
 
@@ -675,7 +693,7 @@ SELECT long_term_patients_list FROM long_term_patient_status;
 
 
 
--- STEP C: PROCEDURE : that store the long-term patient in a table
+-- STEP C: Create a PROCEDURE that stores the long-term patient in a table.
 
 #Create a table in which the list of the long-term patient will be stored
 DROP TABLE long_term_patient_list ;
@@ -720,7 +738,8 @@ SELECT * FROM long_term_patient_list;
 
 
 
--- STEP D - EVENT : that publish the table of the long-term patients every month 
+-- STEP D : Create an EVENT  that publishes the table of long-term patients every month (here every second).
+
 #Turn ON Event Scheduler 
 SET GLOBAL event_scheduler = ON;
 SET GLOBAL event_scheduler = OFF;
@@ -733,7 +752,7 @@ DROP EVENT IF EXISTS long_term_patient_show;
 
 DELIMITER //
 CREATE EVENT long_term_patient_show
-ON SCHEDULE EVERY 1 MONTH
+ON SCHEDULE EVERY 1 SECOND
 DO BEGIN
     CALL long_term_patient_list(); 
 END//
